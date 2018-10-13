@@ -1,6 +1,7 @@
 #include "lwp.h"
 #include <stdint.h>
 
+/* TODO: This was the scheduler example, may need to be tweaked */
 static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next}
 static unsigned int process_count = 0;
 /* List will be linked in a circle, but need a point of reference */
@@ -9,6 +10,7 @@ static thread thread_head = NULL;
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    unsigned long *stack;
+   rfile state_old, state_new;
    context *new_lwp;
    new_lwp->stacksize = stack_size;
 
@@ -26,8 +28,21 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    stack += stack_size;
 
    /* TODO: Update and save rfiles to this context */
+   /* Save old context to get old base pointer, etc...*/
+   load_context(state_old);
    
+   state_new.rax = argument;
+   state_new.rsp = stack;
+   state_new.rbp = stack - stack_size;
    
+   /* Build up stack to look as though it were just called */
+   /* Return address (lwp_exit) */
+   --(unsigned long*)state_new.rsp = &lwp_exit;
+   /* Push old base pointer on the stack */
+   --(unsigned long*)state_new.rsp  = state_new.rbp
+   /* Set base pointer to location of old base pointer */
+   state_new.rbp = state_new.rsp;
+
    /* TODO: Figure out what to do with schedulers in new_lwp */
 
    new_lwp->next = NULL;
