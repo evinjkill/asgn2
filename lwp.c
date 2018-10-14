@@ -21,20 +21,22 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
     * TODO: Might have to change stack size to be in words, not bytes */
    stack = (unsigned long*)malloc(stack_size);
 
-   /* Stack in context refers to the base of the stack */
+   /* Stack in context refers to the base of the stack so it can be freed */
    new_lwp->stack = stack;
 
    /* Move stack_pointer to the "top" of the stack */
    stack += stack_size;
 
-   /* TODO: Update and save rfiles to this context */
    /* Save old context to get old base pointer, etc...*/
    load_context(state_old);
    
-   state_new.rax = argument;
+   /* From notes? rdi gets the argument in create */
+   state_new.rdi = argument;
    state_new.rsp = stack;
    state_new.rbp = stack - stack_size;
    
+   /* TODO: Figure out what to do with the "function" argument */
+
    /* Build up stack to look as though it were just called */
    /* Return address (lwp_exit) */
    --(unsigned long*)state_new.rsp = &lwp_exit;
@@ -42,6 +44,12 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    --(unsigned long*)state_new.rsp  = state_new.rbp
    /* Set base pointer to location of old base pointer */
    state_new.rbp = state_new.rsp;
+
+   /* Initialize floating point unit */
+   state_new.fxsave=FPU_INIT;
+
+  /* Save state in new_lwp */ 
+   new_lwp->state = state_new;
 
    /* TODO: Figure out what to do with schedulers in new_lwp */
 
@@ -66,7 +74,8 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
      (thread_head->prev)->next = new_lwp;
      thread_head->prev = new_lwp;
    }
-
+   
+   return new_lwp->tid;
 }
 
 
