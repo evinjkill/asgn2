@@ -9,6 +9,7 @@ static unsigned int process_count = 0;
 static thread thread_head = NULL;
 static rfile main_rfile = NULL;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
+static thread running_th = NULL;
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -84,7 +85,7 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
 
 /* Return thread ID of the calling LWP */
 tid_t lwp_gettid(void) {
-    //TODO still not sure how a thread knows who it is.
+    return running_tid;
 }
 
 
@@ -157,6 +158,8 @@ void lwp_start(void) {
     }
     else {
         started = 1;
+        /* Set 
+        running_th = nxt;
         /* Switch to nxt's rfile. */
         swap_rfiles(main_rfile,nxt->state);
     }
