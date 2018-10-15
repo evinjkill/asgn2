@@ -7,6 +7,7 @@ scheduler RoundRobin = &rr_publish;
 static unsigned int process_count = 0;
 /* List will be linked in a circle, but need a point of reference */
 static thread thread_head = NULL;
+static rfile main_context = NULL;
 static int started = 0;
 
 /* Create a new LWP */
@@ -101,15 +102,18 @@ void lwp_exit(void) {
 /* Yield the CPU to another LWP */
 void lwp_yield(void) {
     thread nxt,cur;
+    rfile nxt_state,cur_state;
     
     nxt = RoundRobin->next(); // Grab context for the next thread
-    cur = (RoundRobin->next())->prev; // Grab context of current thread.
     if(nxt == NULL) {
         //return to main thread context
     }
     else {
         //move to next lwp context
-        swap_rfiles(cur,nxt);
+        cur = (RoundRobin->next())->prev; // Grab context of current thread.
+        cur_state = cur->state;
+        nxt_state = nxt->state;
+        swap_rfiles(cur_state,nxt_state);
     }
     return;
 }
@@ -117,15 +121,21 @@ void lwp_yield(void) {
 
 /* Start the LWP system */
 void lwp_start(void) {
-    thread cur;
+    thread nxt,cur;
+    rfile nxt_state,cur_state;
+
     if(process_count == 0)
         return;
+    if(started == 1)
+        fprintf(stderr, "ERROR: Tried to start an already started LWP.\n");
 
-    //Save the original main thread context
-    save_context(
+    //Cur needs to be the main threads context.
+    load_context();
 
 
     //Calls sched->next() to pick a lwp to run, if none, return immediately.
+    nxt = RoundRobin->next(); 
+
     return;
 }
 
@@ -133,6 +143,7 @@ void lwp_start(void) {
 /* Stop the LWP system */
 void lwp_stop(void) {
     thread nxt, cur;
+    rfile cur_state;
     
     if(started == 0) {
         fprintf(stderr, "ERROR: Tried to stop a non-started LWP.\n");
@@ -143,9 +154,14 @@ void lwp_stop(void) {
 
     //return to main thread context (where lwp_start was called from)
     nxt = RoundRobin->next();
-    if(nxt == NULL)
-    cur = (RoundRobin->next())->prev; // Grab context of current thread.
-    save_context(cur);
+    if(nxt == NULL) { 
+        //we are fucked. Cant get current thread info w/o it.
+    }
+    else {
+        cur = (RoundRobin->next())->prev; // Grab context of current thread.
+        cur_state = cur->state;
+        swap_rfiles(cur_state,main_context);
+    }
     return;
 }
 
