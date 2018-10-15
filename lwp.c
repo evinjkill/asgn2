@@ -84,7 +84,7 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
 
 /* Return thread ID of the calling LWP */
 tid_t lwp_gettid(void) {
-    return running_tid;
+    return running_th->tid;
 }
 
 
@@ -120,76 +120,78 @@ void lwp_yield(void) {
     if(nxt == NULL) {
         /* No more LWP so restore main thread's rfile. */
         started = 0; /* We are effectively stopping the LWP process. */
-        load_context(main_rfile);
+        cur = running_th;
+        running_th = NULL; /* Going back to main thread in a moment. */
+        swap_rfiles(cur->state,main_rfile);
     }
     else {
         /* Switch to nxt's rfile. */
-        cur = (RoundRobin->next())->prev; //TODO  Grab context of current thread. This method is iffy.
+        cur = running_th;
+        /* Update the running thread because we are about to leave. */
+        running_th = cur;
         swap_rfiles(cur->state,nxt->state);
     }
-    return;
+    return; /* We never get here. */
 }
 
 
 /* Start the LWP system. This consists of saving the main file to a global,
  * switch rfiles to the next LWP if it exists, else return. */
 void lwp_start(void) {
-    
-    // ** This seems almost done. ** //
-    
     thread nxt;
 
-    if(process_count == 0)
-        return;
-    if(started == 1) {
-        fprintf(stderr, "ERROR: Tried to start an already started LWP.\n");
+    if(process_count == 0) {
+        fprintf(stderr, "ERROR: Tried to start() but no LWP created.\n");
         return;
     }
-
-    /* Store the main thread's rfile in main_rfile. */
-    load_context(main_rfile);
+    if(started == 1) {
+        fprintf(stderr, "ERROR: Tried to start() an already started LWP.\n");
+        return;
+    }
+    if(running_th != NULL) {
+        fprintf(stderr, 
+            "ERROR: Tried to start() but there was already a running LWP.\n");
+        return;
+    }
 
     /* Get the next LWP to run. */
     nxt = RoundRobin->next(); 
     if(nxt == NULL) {
         /* No next thread to run, return to main. */
+        fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
         return;
     }
     else {
         started = 1;
-        /* Set 
         running_th = nxt;
-        /* Switch to nxt's rfile. */
+        /* Switch to nxt's rfile, saving the main rfile in main_rfile. */
         swap_rfiles(main_rfile,nxt->state);
     }
-    return;
+    return; /* We never get here. */
 }
 
 
 /* Stop the LWP system. Returns us to where lwp_start() was initially called. 
- * This consists of restoring the main thread's rfile and [**setting the stack
- * pointer**] */
+ * This consists of restoring the main thread's rfile (setting the stack
+ * pointer) */
 void lwp_stop(void) {
-    thread nxt, cur;
+    thread cur;
     
     if(started == 0) {
-        fprintf(stderr, "ERROR: Tried to stop a non-started LWP.\n");
+        fprintf(stderr, "ERROR: Tried to stop() a non-started LWP.\n");
+        return;
+    }
+    if(running_th == NULL) {
+        fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
         return;
     }
     started = 0;
-
-    //TODO Restore orig stack pointer?
-
-    nxt = RoundRobin->next();
-    if(nxt == NULL) { 
-        //TODO we are fucked. Cant get current thread info w/o it.
-    }
-    else {
-        cur = (RoundRobin->next())->prev; //TODO Grab context of current thread. This method is iffy.
-        /* Switch to main's rfile. */
-        swap_rfiles(cur->state,main_rfile);
-    }
-    return;
+    cur = running_th;
+    /* Update the running thread because we are about to leave. */
+    running_th = NULL;
+    /* Switch to main's rfile. */
+    swap_rfiles(cur->state,main_rfile);
+    return; /* We never get here. */
 }
 
 
@@ -197,7 +199,6 @@ void lwp_stop(void) {
 
 /* Install a new scheduling function */
 void lwp_set_scheduler(scheduler fun) {
-
     return;
 }
 
@@ -206,6 +207,7 @@ void lwp_set_scheduler(scheduler fun) {
 scheduler lwp_get_scheduler(void) {
    return rr_publish;   
 }
+
 
 
 /* Map a thread ID to a context */
