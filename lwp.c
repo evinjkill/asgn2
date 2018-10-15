@@ -2,9 +2,11 @@
 #include <stdint.h>
 
 static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next}
+scheduler RoundRobin = &rr_publish;
 static unsigned int process_count = 0;
 /* List will be linked in a circle, but need a point of reference */
 static thread thread_head = NULL;
+static int started = 0;
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -56,38 +58,78 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
 
 
 /* Return thread ID of the calling LWP */
-void  lwp_exit(void) {
-
-}
-
-
-/* Terminates the calling LWP */
 tid_t lwp_gettid(void) {
 
 }
 
 
-/* Yield the CPU to another LWP */
-void  lwp_yield(void) {
+/* Terminates the calling LWP */
+void lwp_exit(void) {
+    //Terminates the thread
 
+    //Frees the resources
+
+    //Calls sched->next() to get the next thread, if none, return to main thread.
+    return
+}
+
+
+/* Yield the CPU to another LWP */
+void lwp_yield(void) {
+    thread nxt,cur;
+    
+    nxt = RoundRobin->next(); // Grab context for the next thread
+    cur = (RoundRobin->next())->prev; // Grab context of current thread.
+    if(nxt == NULL) {
+        //return to main thread context
+    }
+    else {
+        //move to next lwp context
+        swap_rfiles(cur,nxt);
+    }
+    return;
 }
 
 
 /* Start the LWP system */
-void  lwp_start(void) {
+void lwp_start(void) {
+    thread cur;
+    if(process_count == 0)
+        return;
 
+    //Save the original main thread context
+    save_context(
+
+
+    //Calls sched->next() to pick a lwp to run, if none, return immediately.
+    return;
 }
 
 
 /* Stop the LWP system */
-void  lwp_stop(void) {
+void lwp_stop(void) {
+    thread nxt, cur;
+    
+    if(started == 0) {
+        fprintf(stderr, "ERROR: Tried to stop a non-started LWP.\n");
+        return;
+    }
 
+    //Restores orig stack pointer
+
+    //return to main thread context (where lwp_start was called from)
+    nxt = RoundRobin->next();
+    if(nxt == NULL)
+    cur = (RoundRobin->next())->prev; // Grab context of current thread.
+    save_context(cur);
+    return;
 }
 
 
 /* Install a new scheduling function */
-void  lwp_set_scheduler(scheduler fun) {
+void lwp_set_scheduler(scheduler fun) {
 
+    return;
 }
 
 
