@@ -1,7 +1,8 @@
 #include "lwp.h"
 #include <stdint.h>
+#include <stdlib.h>
 
-/* TODO: This was the scheduler example, may need to be tweaked */
+
 static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next}
 scheduler RoundRobin = &rr_publish;
 static unsigned int process_count = 0;
@@ -11,31 +12,39 @@ static rfile main_rfile = NULL;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
 
+
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    unsigned long *stack;
-   rfile state_old, state_new;
-   thread new_lwp;
+   rfile state_new;
+   
+   if(stack_size < 3) {
+      fprintf(stderr, "Stack size needs to be at least 3 words");
+      exit(1);
+   }
+   thread new_lwp = (thread)malloc(sizeof(context));
+   if(!new_lwp) {
+      fprintf(stderr, "Out of memory");
+      exit(1);
+   }
    new_lwp->stacksize = stack_size;
-
+   
    /* Assign process id based on process count */
    new_lwp->tid = (tid_t)++process_count;
 
    /* Allocate space for the stack */
    stack = (unsigned long*)malloc(stack_size*sizeof(unsigned long));
-   
+   if(!stack) {
+      fprintf(stderr, "Out of memory");
+      exit(1);
+   } 
    /* Stack in context refers to the base of the stack so it can be freed */
    new_lwp->stack = stack;
 
-   /* Move stack_pointer to the "top" of the stack */
-   stack += stack_size;
-
-   /* Save old context to get old base pointer, etc...*/
-   load_context(state_old);
-   
-   /* From notes? rdi gets the argument in create */
-   state_new.rdi = argument;
-   state_new.rsp = stack;
+   /* rdi gets the argument in create */
+   state_new.rdi = (unsigned long)argument;
+   /* Move stack pointer to the top of the stack */
+   state_new.rsp = (stack += stack_size);
    
    /* Build up stack to look as though it were just called */
    /* Return address (lwp_exit) */
