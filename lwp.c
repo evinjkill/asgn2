@@ -20,9 +20,8 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    /* Assign process id based on process count */
    new_lwp->tid = (tid_t)++process_count;
 
-   /* Allocate space for the stack 
-    * TODO: Might have to change stack size to be in words, not bytes */
-   stack = (unsigned long*)malloc(stack_size);
+   /* Allocate space for the stack */
+   stack = (unsigned long*)malloc(stack_size*sizeof(unsigned long));
    
    /* Stack in context refers to the base of the stack so it can be freed */
    new_lwp->stack = stack;
@@ -37,11 +36,11 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    state_new.rdi = argument;
    state_new.rsp = stack;
    
-   /* TODO: Figure out what to do with the "function" argument */
-
    /* Build up stack to look as though it were just called */
    /* Return address (lwp_exit) */
    --(unsigned long*)state_new.rsp = &lwp_exit;
+   /* From class, push function onto stack to be popped with return */
+   --(unsigned long*)state_new.rsp = function;
    /* Push old base pointer on the stack */
    --(unsigned long*)state_new.rsp  = state_new.rbp
    /* Set base pointer to location of old base pointer */
