@@ -14,7 +14,7 @@ static int started = 0;
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    unsigned long *stack;
    rfile state_old, state_new;
-   context *new_lwp;
+   thread new_lwp;
    new_lwp->stacksize = stack_size;
 
    /* Assign process id based on process count */
@@ -23,7 +23,7 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    /* Allocate space for the stack 
     * TODO: Might have to change stack size to be in words, not bytes */
    stack = (unsigned long*)malloc(stack_size);
-
+   
    /* Stack in context refers to the base of the stack so it can be freed */
    new_lwp->stack = stack;
 
@@ -36,7 +36,6 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    /* From notes? rdi gets the argument in create */
    state_new.rdi = argument;
    state_new.rsp = stack;
-   state_new.rbp = stack - stack_size;
    
    /* TODO: Figure out what to do with the "function" argument */
 
@@ -56,8 +55,10 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
 
    /* TODO: Figure out what to do with schedulers in new_lwp */
 
-   new_lwp->next = NULL;
-   new_lwp->prev = NULL;
+   /* Default: Make the lwp loop with itself so the scheduler->next() will just
+    * run the same thread again if there is only one lwp in the list */
+   new_lwp->next = new_lwp;
+   new_lwp->prev = new_lwp;
 
    /* Connect linked list of threads */
    if(!thread_head) {
@@ -77,7 +78,6 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
      (thread_head->prev)->next = new_lwp;
      thread_head->prev = new_lwp;
    }
-   
    return new_lwp->tid;
 }
 
