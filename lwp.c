@@ -14,7 +14,7 @@ static thread thread_head = NULL;
 static rfile main_rfile;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
-static unsigned long safespace[SAFESIZE]; /* Buffer to hold our reallyExit() call. */
+static unsigned long safespace[SAFESIZE]; /* Buffer to hold reallyExit() call */
 
 void add_thread(thread new_lwp);
 static void reallyExit(void);
@@ -153,16 +153,16 @@ void lwp_start(void) {
     thread nxt;
 
     if(process_count == 0) {
-        fprintf(stderr, "ERROR: Tried to start() but no LWP created.\n");
+        //fprintf(stderr, "ERROR: Tried to start() but no LWP created.\n");
         return;
     }
     if(started == 1) {
-        fprintf(stderr, "ERROR: Tried to start() an already started LWP.\n");
+        //fprintf(stderr, "ERROR: Tried to start() an already started LWP.\n");
         return;
     }
     if(running_th != NULL) {
-        fprintf(stderr, 
-            "ERROR: Tried to start() but there was already a running LWP.\n");
+        //fprintf(stderr, 
+            //"ERROR: Tried to start() but there was already a running LWP.\n");
         return;
     }
 
@@ -170,7 +170,7 @@ void lwp_start(void) {
     nxt = RoundRobin->next(); 
     if(nxt == NULL) {
         /* No next thread to run, return to main. */
-        fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
+        //fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
         return;
     }
     else {
@@ -190,11 +190,11 @@ void lwp_stop(void) {
     thread cur;
     
     if(started == 0) {
-        fprintf(stderr, "ERROR: Tried to stop() a non-started LWP.\n");
+        //fprintf(stderr, "ERROR: Tried to stop() a non-started LWP.\n");
         return;
     }
     if(running_th == NULL) {
-        fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
+        //fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
         return;
     }
 
@@ -278,7 +278,7 @@ void remove_thread(thread lwp) {
       exit(1);
    }
    if(!lwp) {
-      fprintf(stderr, "Tried to remove a NULL thread...just returning");
+      //fprintf(stderr, "Tried to remove a NULL thread...just returning");
       return;
    }
    if(lwp->next == lwp) {

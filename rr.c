@@ -3,6 +3,8 @@
 
 #include "rr.h"
 #include "lwp.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 static thread thread_head = NULL;
 static thread running_th = NULL;
@@ -41,20 +43,21 @@ void rr_admit(thread new) {
 void rr_remove(thread victim) {
 
     if(victim == NULL) {
-        fprintf(stderr, "ERROR: Tried to remove() a NULL thread.\n");
+        //fprintf(stderr, "ERROR: Tried to remove() a NULL thread.\n");
         return;
     }
     if(thread_head == NULL) {
-        fprintf(stderr, 
-            "ERROR: Tried to remove() a thread from an empty list.\n");
+        //fprintf(stderr, 
+            //"ERROR: Tried to remove() a thread from an empty list.\n");
         return;
     }
-    if(victim->next == victim)
+    if(victim->next == victim) {
         thread_head = NULL;
         running_th = NULL;
+    }
     else {
         (victim->s_prev)->s_next = victim->s_next;
-        (victim->s_next)->s_prev = victim->s_prev
+        (victim->s_next)->s_prev = victim->s_prev;
     }
     return;
 }
@@ -64,8 +67,9 @@ void rr_remove(thread victim) {
  * Round Robin order. */
 thread rr_next(void) {
     if(thread_head == NULL) {
-        fprintf(stderr, "ERROR: Tried to next() but no LWP in scheduler.\n");
+        //fprintf(stderr, "ERROR: Tried to next() but no LWP in scheduler.\n");
         return NULL;
+    }
     running_th = running_th->next;
     if(running_th == NULL)
         return NULL;

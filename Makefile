@@ -1,17 +1,20 @@
 C = gcc
 CFLAGS = -Wall -g -fpic
 
-intel-all: lib/liblwp.so
+intel-all: liblwp.so
 
-lib/liblwp.so: lib lwp.o
-	$(CC) $(CFLAGS) -shared -o $@ lwp.o
-
-lib:
-	mkdir lib
+liblwp.so: lib lwp.o rr.o magic64.o
+	$(CC) $(CFLAGS) -shared -o $@ lwp.o rr.o magic64.o
 
 lwp.o: lwp.c
 	$(CC) $(CFLAGS) -m64 -c -o lwp.o lwp.c
 
+rr.o: rr.c
+	$(CC) $(CFLAGS) -m64 -c -o rr.o rr.c
+
+magic64.o: magic64.S
+	$(CC) -o magic64.o -c magic64.S
+
 clean:
-	rm lwp.o
+	rm lwp.o rr.o magic64.o
 
