@@ -1,10 +1,6 @@
 C = gcc
 CFLAGS = -Wall -g -fpic
 
-LDFLAGS = -Wall -g
-
-LD = gcc
-
 intel-all: liblwp.so
 
 liblwp.so: lwp.o rr.o magic64.o
@@ -19,11 +15,6 @@ rr.o: rr.c
 magic64.o: magic64.S
 	$(CC) -o magic64.o -c magic64.S
 
-nums: numbersmain.o liblwp.so numbersmain.c
-	$(LD) $(LDFLAGS) -c -o nums numbersmain.o numbersmain.c -L. -llwp
-
-numbermain.o: lwp.h
-
 clean:
-	rm lwp.o rr.o magic64.o numbersmain.o
+	rm lwp.o rr.o magic64.o
 
