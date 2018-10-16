@@ -287,6 +287,10 @@ void remove_thread(thread lwp) {
    }
    else {
       /* Unlink the thread in the list */
+      if(lwp->tid == thread_head->tid) {
+         /* Don't want thread_head to be NULL */
+         thread_head = thread_head->next;
+      }
       (lwp->prev)->next = lwp->next;
       (lwp->next)->prev = lwp->prev;
    }

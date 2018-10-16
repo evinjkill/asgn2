@@ -51,7 +51,7 @@ void rr_remove(thread victim) {
             //"ERROR: Tried to remove() a thread from an empty list.\n");
         return;
     }
-    if(victim->next == victim) {
+    if(victim->s_next == victim) {
         thread_head = NULL;
         running_th = NULL;
     }
@@ -70,7 +70,7 @@ thread rr_next(void) {
         //fprintf(stderr, "ERROR: Tried to next() but no LWP in scheduler.\n");
         return NULL;
     }
-    running_th = running_th->next;
+    running_th = running_th->s_next;
     if(running_th == NULL)
         return NULL;
     else
