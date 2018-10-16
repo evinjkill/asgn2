@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define SAFESIZE 6400
 
 static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next}
 scheduler RoundRobin = &rr_publish;
@@ -11,6 +12,7 @@ static thread thread_head = NULL;
 static rfile main_rfile = NULL;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
+static unsigned long safespace[SAFESIZE] /* Buffer to hold our reallyExit() call. */
 
 void add_thread(thread new_lwp);
 
@@ -60,10 +62,11 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    /* Initialize floating point unit */
    state_new.fxsave=FPU_INIT;
 
-  /* Save state in new_lwp */ 
+   /* Save state in new_lwp */ 
    new_lwp->state = state_new;
 
-   /* TODO: Figure out what to do with schedulers in new_lwp */
+   /* Add new_lwp to scheduler list */
+   RoundRobin->admit(new_lwp);
 
    /* Default: Make the lwp loop with itself so the scheduler->next() will just
     * run the same thread again if there is only one lwp in the list */
@@ -83,12 +86,21 @@ tid_t lwp_gettid(void) {
 
 /* Terminates the calling LWP. */
 void lwp_exit(void) {
+
+    /* Move stack pointer to our buffer space */
+    SetSP(safespace+SAFESIZE);
+    reallyExit();
+
+    return
+}
+
+static void reallyExit(void) {
     thread nxt;
 
-    //TODO Terminates the thread
-    //TODO Frees the resources
-    //TODO remove from scheduler
-
+    RoundRobin->remove(running_th);
+    free(running_th->stack);
+    free(running_th);
+    
     /* Get the next LWP to run. */
     nxt = RoundRobin->next();
     if(nxt == NULL) {
@@ -100,7 +112,7 @@ void lwp_exit(void) {
         /* Switch to nxt's rfile. */
         load_context(nxt->state);
     }
-    return
+    return; /* We never get here. */
 }
 
 
@@ -192,13 +204,27 @@ void lwp_stop(void) {
 
 /* Install a new scheduling function */
 void lwp_set_scheduler(scheduler fun) {
+    thread temp_thread;
+    
+    /* If fun is NULL, return to Round Robin scheduling. */
+    if(fun == NULL) {
+        RoundRobin = &rr_publish;
+        return;
+    }
+
+    while((temp_thread = RoundRobin->next()) != NULL) {
+        fun->admit(temp_thread);
+        RoundRobin->remove(temp_thread);
+    }
+
+    RoundRobin = fun;
     return;
 }
 
 
 /* Find out what the current scheduler is */
 scheduler lwp_get_scheduler(void) {
-   return rr_publish;   
+   return RoundRobin;   
 }
 
 
