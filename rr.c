@@ -27,7 +27,6 @@ void rr_admit(thread new) {
     /* Insert a node into the circular list. */
     if(thread_head == NULL) {
         thread_head = new;
-        running_th = thread_head;
         thread_head->s_next = thread_head;
         thread_head->s_prev = thread_head;
     }
@@ -75,9 +74,9 @@ thread rr_next(void) {
     if(thread_head == NULL) {
         return NULL;
     }
-    running_th = running_th->s_next;
     if(running_th == NULL)
-        return NULL;
+        running_th = thread_head;
     else
-        return running_th;
+        running_th = running_th->s_next;
+    return running_th;
 }

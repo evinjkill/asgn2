@@ -1,13 +1,16 @@
+/* This is lwp.c.  Written by Ryan Kruger and Evin Killian. */
+
 #include "lwp.h"
 #include "rr.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+/* A semi-arbitrary ammount of space to fully exit a LWP. */
 #define SAFESIZE 6400
 
 static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next};
-scheduler RoundRobin = &rr_publish;
+static scheduler RoundRobin = &rr_publish;
 static unsigned int process_count = 0;
 /* List will be linked in a circle, but need a point of reference */
 static thread thread_head = NULL;
@@ -16,9 +19,12 @@ static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
 static unsigned long safespace[SAFESIZE]; /* Buffer to hold reallyExit() call */
 
-void add_thread(thread new_lwp);
+
+/* Prototypes. */
+static void add_thread(thread new_lwp);
 static void reallyExit(void);
-void remove_thread(thread lwp);
+static void remove_thread(thread lwp);
+
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -172,7 +178,6 @@ void lwp_start(void) {
     nxt = RoundRobin->next(); 
     if(nxt == NULL) {
         /* No next thread to run, return to main. */
-        fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
         return;
     }
     else {
@@ -214,7 +219,6 @@ void lwp_stop(void) {
 /* Install a new scheduling function */
 void lwp_set_scheduler(scheduler fun) {
     thread temp_thread;
-    
     /* If fun is NULL, return to Round Robin scheduling. */
     if(fun == NULL) {
         RoundRobin = &rr_publish;
@@ -223,7 +227,7 @@ void lwp_set_scheduler(scheduler fun) {
 
     while((temp_thread = RoundRobin->next()) != NULL) {
         fun->admit(temp_thread);
-        RoundRobin->remove(temp_thread);
+        RoundRobin->remove(temp_thread);     
     }
 
     RoundRobin = fun;
@@ -259,7 +263,7 @@ thread tid2thread(tid_t tid) {
 }
 
 
-void add_thread(thread new_lwp) {
+static void add_thread(thread new_lwp) {
    /* Connect linked list of threads */
    if(!thread_head) {
       thread_head = new_lwp;      
@@ -274,7 +278,7 @@ void add_thread(thread new_lwp) {
 }
 
 
-void remove_thread(thread lwp) {
+static void remove_thread(thread lwp) {
    if(!thread_head) {
       fprintf(stderr, "No threads exists");
       exit(1);
