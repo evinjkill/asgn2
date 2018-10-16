@@ -99,7 +99,7 @@ void lwp_exit(void) {
         /* Switch to nxt's rfile. */
         load_context(nxt->state);
     }
-    return
+    return;
 }
 
 
