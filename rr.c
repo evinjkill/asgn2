@@ -28,6 +28,8 @@ void rr_admit(thread new) {
     if(thread_head == NULL) {
         thread_head = new;
         running_th = thread_head;
+        thread_head->s_next = thread_head;
+        thread_head->s_prev = thread_head;
     }
     else {
         new->s_next = thread_head;
@@ -56,6 +58,10 @@ void rr_remove(thread victim) {
         running_th = NULL;
     }
     else {
+        if(victim->tid == thread_head->tid) {
+            thread_head = thread_head->s_next;
+        }
+        running_th = running_th->s_prev;
         (victim->s_prev)->s_next = victim->s_next;
         (victim->s_next)->s_prev = victim->s_prev;
     }
