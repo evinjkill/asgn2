@@ -5,13 +5,10 @@ LDFLAGS = -Wall -g
 
 LD = gcc
 
-intel-all: lib/liblwp.so
+intel-all: liblwp.so
 
-lib/liblwp.so: lib lwp.o rr.o magic64.o
+liblwp.so: lwp.o rr.o magic64.o
 	$(CC) $(CFLAGS) -shared -o $@ lwp.o rr.o magic64.o
-
-lib:
-	mkdir lib
 
 lwp.o: lwp.c
 	$(CC) $(CFLAGS) -m64 -c -o lwp.o lwp.c
