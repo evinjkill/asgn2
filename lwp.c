@@ -103,6 +103,7 @@ void lwp_exit(void) {
 
     //TODO Terminates the thread
     //TODO Frees the resources
+    //TODO remove from scheduler
 
     /* Get the next LWP to run. */
     nxt = RoundRobin->next();
@@ -124,19 +125,18 @@ void lwp_exit(void) {
 void lwp_yield(void) {
     thread nxt,cur;
     
-    /* Get the next LWP to run. */
+    /* Get the next LWP to run from the scheduler. */
     nxt = RoundRobin->next();
     if(nxt == NULL) {
         /* No more LWP so restore main thread's rfile. */
         started = 0; /* We are effectively stopping the LWP process. */
         cur = running_th;
-        running_th = NULL; /* Going back to main thread in a moment. */
+        running_th = NULL; 
         swap_rfiles(cur->state,main_rfile);
     }
     else {
         /* Switch to nxt's rfile. */
         cur = running_th;
-        /* Update the running thread because we are about to leave. */
         running_th = cur;
         swap_rfiles(cur->state,nxt->state);
     }
@@ -163,7 +163,7 @@ void lwp_start(void) {
         return;
     }
 
-    /* Get the next LWP to run. */
+    /* Get the next LWP to run from the scheduler. */
     nxt = RoundRobin->next(); 
     if(nxt == NULL) {
         /* No next thread to run, return to main. */
@@ -194,9 +194,9 @@ void lwp_stop(void) {
         fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
         return;
     }
+
     started = 0;
     cur = running_th;
-    /* Update the running thread because we are about to leave. */
     running_th = NULL;
     /* Switch to main's rfile. */
     swap_rfiles(cur->state,main_rfile);
