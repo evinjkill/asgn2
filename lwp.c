@@ -12,6 +12,7 @@ static rfile main_rfile = NULL;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
 
+void add_thread(thread new_lwp);
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -69,24 +70,7 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    new_lwp->next = new_lwp;
    new_lwp->prev = new_lwp;
 
-   /* Connect linked list of threads */
-   if(!thread_head) {
-      thread_head = new_lwp;      
-   }
-   else if(!thread_head->prev) {
-      /* Create a loop out of two commands */
-      new_lwp->next = thread_head;
-      new_lwp->prev = thread_head;
-      thread_head->next = new_lwp;
-      thread_head->prev = new_lwp;
-   }
-   else {
-      /* Put the new process behind thread_head */
-     new_lwp->next = thread_head;
-     new_lwp->prev = thread_head->prev;
-     (thread_head->prev)->next = new_lwp;
-     thread_head->prev = new_lwp;
-   }
+   add_thread(new_lwp);
    return new_lwp->tid;
 }
 
@@ -237,4 +221,40 @@ thread tid2thread(tid_t tid) {
       temp_thread = temp_thread->next;
    }
    return NULL;
+}
+
+
+void add_thread(thread new_lwp) {
+   /* Connect linked list of threads */
+   if(!thread_head) {
+      thread_head = new_lwp;      
+   }
+   else {
+      /* Put the new process behind thread_head */
+     new_lwp->next = thread_head;
+     new_lwp->prev = thread_head->prev;
+     (thread_head->prev)->next = new_lwp;
+     thread_head->prev = new_lwp;
+   }
+}
+
+
+void remove_thread(thread lwp) {
+   if(!thread_head) {
+      fprintf(stderr, "No threads exists");
+      exit(1);
+   }
+   if(!lwp) {
+      fprintf(stderr, "Tried to remove a NULL thread...just returning");
+      return;
+   }
+   if(lwp->next == lwp) {
+      /* There is onlt one thread in the list */
+      thread_head = NULL;
+   }
+   else {
+      /* Unlink the thread in the list */
+      (lwp->prev)->next = lwp->next;
+      (lwp->next)->prev = lwp->prev;
+   }
 }
