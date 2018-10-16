@@ -40,6 +40,8 @@ typedef unsigned long tid_t;
 #define NO_THREAD 0             /* an always invalid thread id */
 #define next lib_one
 #define prev lib_two
+#define s_next sched_one
+#define s_prev sched_two
 
 typedef struct threadinfo_st *thread;
 typedef struct threadinfo_st {
