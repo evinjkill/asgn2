@@ -1,19 +1,16 @@
 C = gcc
-CFLAGS = -Wall -g -pedantic -I.
+CFLAGS = -Wall -g -fpic
 
-all: lwp.c
+intel-all: lib/liblwp.so
 
-lwp: lwp.o
-	$(CC) $(CFLAGS) -o lwp lwp.o
+lib/liblwp.so: lib lwp.o
+	$(CC) $(CFLAGS) -shared -o $@ lwp.o
+
+lib:
+	mkdir lib
 
 lwp.o: lwp.c
-	$(CC) $(CFLAGS) -c lwp.c
-
-matadd: matadd.o
-	$(CC) $(CFLAGS) -o matadd matadd.o -lpthread
-
-matadd.o: matadd.c
-	$(CC) $(CFLAGS) -c matadd.c
+	$(CC) $(CFLAGS) -m64 -c -o lwp.o lwp.c
 
 clean:
 	rm lwp.o

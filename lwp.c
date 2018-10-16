@@ -1,18 +1,24 @@
 #include "lwp.h"
+#include "rr.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
+#define SAFESIZE 6400
 
-static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next}
+static struct scheduler rr_publish = {NULL, NULL, rr_admit, rr_remove, rr_next};
 scheduler RoundRobin = &rr_publish;
 static unsigned int process_count = 0;
 /* List will be linked in a circle, but need a point of reference */
 static thread thread_head = NULL;
-static rfile main_rfile = NULL;
+static rfile main_rfile;
 static int started = 0; /* Set if lwp_start()'ed, cleared if lwp_stop()'d */
 static thread running_th = NULL;
+static unsigned long safespace[SAFESIZE]; /* Buffer to hold our reallyExit() call. */
 
 void add_thread(thread new_lwp);
+static void reallyExit(void);
+
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -45,26 +51,30 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    /* rdi gets the argument in create */
    state_new.rdi = (unsigned long)argument;
    /* Move stack pointer to the top of the stack */
-   state_new.rsp = (stack += stack_size);
+   state_new.rsp = (unsigned long)(stack += stack_size);
    
    /* Build up stack to look as though it were just called */
    /* Return address (lwp_exit) */
-   --(unsigned long*)state_new.rsp = &lwp_exit;
+   state_new.rsp = state_new.rsp - sizeof(unsigned long);
+   *((unsigned long*)(state_new.rsp)) = (unsigned long)&lwp_exit;
    /* From class, push function onto stack to be popped with return */
-   --(unsigned long*)state_new.rsp = function;
+   state_new.rsp = state_new.rsp - sizeof(unsigned long);
+   *((unsigned long*)(state_new.rsp)) = (unsigned long)function;
    /* Push old base pointer on the stack */
-   --(unsigned long*)state_new.rsp  = state_new.rbp
+   state_new.rsp = state_new.rsp - sizeof(unsigned long);
+   *((unsigned long*)(state_new.rsp)) = state_new.rbp;
    /* Set base pointer to location of old base pointer */
    state_new.rbp = state_new.rsp;
 
    /* Initialize floating point unit */
    state_new.fxsave=FPU_INIT;
 
-  /* Save state in new_lwp */ 
+   /* Save state in new_lwp */ 
    new_lwp->state = state_new;
 
-   /* TODO: Figure out what to do with schedulers in new_lwp */
-   
+   /* Add new_lwp to scheduler list */
+   RoundRobin->admit(new_lwp);
+
    /* Default: Make the lwp loop with itself so the scheduler->next() will just
     * run the same thread again if there is only one lwp in the list */
    new_lwp->next = new_lwp;
@@ -83,24 +93,33 @@ tid_t lwp_gettid(void) {
 
 /* Terminates the calling LWP. */
 void lwp_exit(void) {
+
+    /* Move stack pointer to our buffer space */
+    SetSP(safespace+SAFESIZE);
+    reallyExit();
+
+    return;
+}
+
+static void reallyExit(void) {
     thread nxt;
 
-    //TODO Terminates the thread
-    //TODO Frees the resources
-    //TODO remove from scheduler
-
+    RoundRobin->remove(running_th);
+    free(running_th->stack);
+    free(running_th);
+    
     /* Get the next LWP to run. */
     nxt = RoundRobin->next();
     if(nxt == NULL) {
         /* No more LWP so restore main thread's rfile. */
         started = 0; /* We are effectively stopping the LWP process. */
-        load_context(main_rfile);
+        load_context(&main_rfile);
     }
     else {
         /* Switch to nxt's rfile. */
-        load_context(nxt->state);
+        load_context(&nxt->state);
     }
-    return;
+    return; /* We never get here. */
 }
 
 
@@ -116,13 +135,13 @@ void lwp_yield(void) {
         started = 0; /* We are effectively stopping the LWP process. */
         cur = running_th;
         running_th = NULL; 
-        swap_rfiles(cur->state,main_rfile);
+        swap_rfiles(&cur->state,&main_rfile);
     }
     else {
         /* Switch to nxt's rfile. */
         cur = running_th;
         running_th = cur;
-        swap_rfiles(cur->state,nxt->state);
+        swap_rfiles(&cur->state,&nxt->state);
     }
     return; /* We never get here. */
 }
@@ -158,7 +177,7 @@ void lwp_start(void) {
         started = 1;
         running_th = nxt;
         /* Switch to nxt's rfile, saving the main rfile in main_rfile. */
-        swap_rfiles(main_rfile,nxt->state);
+        swap_rfiles(&main_rfile,&nxt->state);
     }
     return; /* We never get here. */
 }
@@ -183,7 +202,7 @@ void lwp_stop(void) {
     cur = running_th;
     running_th = NULL;
     /* Switch to main's rfile. */
-    swap_rfiles(cur->state,main_rfile);
+    swap_rfiles(&cur->state,&main_rfile);
     return; /* We never get here. */
 }
 
@@ -192,13 +211,27 @@ void lwp_stop(void) {
 
 /* Install a new scheduling function */
 void lwp_set_scheduler(scheduler fun) {
+    thread temp_thread;
+    
+    /* If fun is NULL, return to Round Robin scheduling. */
+    if(fun == NULL) {
+        RoundRobin = &rr_publish;
+        return;
+    }
+
+    while((temp_thread = RoundRobin->next()) != NULL) {
+        fun->admit(temp_thread);
+        RoundRobin->remove(temp_thread);
+    }
+
+    RoundRobin = fun;
     return;
 }
 
 
 /* Find out what the current scheduler is */
 scheduler lwp_get_scheduler(void) {
-   return rr_publish;   
+   return RoundRobin;   
 }
 
 
