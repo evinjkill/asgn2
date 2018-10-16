@@ -18,7 +18,7 @@ static unsigned long safespace[SAFESIZE]; /* Buffer to hold reallyExit() call */
 
 void add_thread(thread new_lwp);
 static void reallyExit(void);
-
+void remove_thread(thread lwp);
 
 /* Create a new LWP */
 tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
@@ -105,6 +105,7 @@ static void reallyExit(void) {
     thread nxt;
 
     RoundRobin->remove(running_th);
+    remove_thread(running_th);
     free(running_th->stack);
     free(running_th);
     
@@ -113,10 +114,12 @@ static void reallyExit(void) {
     if(nxt == NULL) {
         /* No more LWP so restore main thread's rfile. */
         started = 0; /* We are effectively stopping the LWP process. */
+        running_th = NULL;
         load_context(&main_rfile);
     }
     else {
         /* Switch to nxt's rfile. */
+        running_th = nxt;
         load_context(&nxt->state);
     }
     return; /* We never get here. */
@@ -140,7 +143,7 @@ void lwp_yield(void) {
     else {
         /* Switch to nxt's rfile. */
         cur = running_th;
-        running_th = cur;
+        running_th = nxt;
         swap_rfiles(&cur->state,&nxt->state);
     }
     return; /* We never get here. */
@@ -153,16 +156,15 @@ void lwp_start(void) {
     thread nxt;
 
     if(process_count == 0) {
-        //fprintf(stderr, "ERROR: Tried to start() but no LWP created.\n");
         return;
     }
     if(started == 1) {
-        //fprintf(stderr, "ERROR: Tried to start() an already started LWP.\n");
+        fprintf(stderr, "ERROR: Tried to start() an already started LWP.\n");
         return;
     }
     if(running_th != NULL) {
-        //fprintf(stderr, 
-            //"ERROR: Tried to start() but there was already a running LWP.\n");
+        fprintf(stderr, 
+            "ERROR: Tried to start() but there was already a running LWP.\n");
         return;
     }
 
@@ -170,7 +172,7 @@ void lwp_start(void) {
     nxt = RoundRobin->next(); 
     if(nxt == NULL) {
         /* No next thread to run, return to main. */
-        //fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
+        fprintf(stderr, "ERROR: Scheduler gave no next LWP to start().\n");
         return;
     }
     else {
@@ -190,11 +192,11 @@ void lwp_stop(void) {
     thread cur;
     
     if(started == 0) {
-        //fprintf(stderr, "ERROR: Tried to stop() a non-started LWP.\n");
+        fprintf(stderr, "ERROR: Tried to stop() a non-started LWP.\n");
         return;
     }
     if(running_th == NULL) {
-        //fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
+        fprintf(stderr, "ERROR: Tried to stop() but not a running LWP.\n");
         return;
     }
 
@@ -278,7 +280,7 @@ void remove_thread(thread lwp) {
       exit(1);
    }
    if(!lwp) {
-      //fprintf(stderr, "Tried to remove a NULL thread...just returning");
+      fprintf(stderr, "Tried to remove a NULL thread...just returning");
       return;
    }
    if(lwp->next == lwp) {

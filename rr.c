@@ -45,12 +45,12 @@ void rr_admit(thread new) {
 void rr_remove(thread victim) {
 
     if(victim == NULL) {
-        //fprintf(stderr, "ERROR: Tried to remove() a NULL thread.\n");
+        fprintf(stderr, "ERROR: Tried to remove() a NULL thread.\n");
         return;
     }
     if(thread_head == NULL) {
-        //fprintf(stderr, 
-            //"ERROR: Tried to remove() a thread from an empty list.\n");
+        fprintf(stderr, 
+            "ERROR: Tried to remove() a thread from an empty list.\n");
         return;
     }
     if(victim->s_next == victim) {
@@ -73,7 +73,6 @@ void rr_remove(thread victim) {
  * Round Robin order. */
 thread rr_next(void) {
     if(thread_head == NULL) {
-        //fprintf(stderr, "ERROR: Tried to next() but no LWP in scheduler.\n");
         return NULL;
     }
     running_th = running_th->s_next;
