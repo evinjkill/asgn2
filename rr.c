@@ -52,6 +52,7 @@ void remove(thread victim) {
     }
     if(victim->next == victim)
         thread_head = NULL;
+        running_th = NULL;
     else {
         (victim->s_prev)->s_next = victim->s_next;
         (victim->s_next)->s_prev = victim->s_prev
@@ -72,4 +73,3 @@ thread next(void) {
     else
         return running_th;
 }
-

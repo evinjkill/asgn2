@@ -64,7 +64,7 @@ tid_t lwp_create(lwpfun function, void *argument, size_t stack_size) {
    new_lwp->state = state_new;
 
    /* TODO: Figure out what to do with schedulers in new_lwp */
-
+   
    /* Default: Make the lwp loop with itself so the scheduler->next() will just
     * run the same thread again if there is only one lwp in the list */
    new_lwp->next = new_lwp;
